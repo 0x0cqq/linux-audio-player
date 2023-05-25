@@ -14,9 +14,7 @@ include_directories(${LIB_BASE_PATH}libavfilter)
 
 set(LIB_BASE_PATH /usr/lib/x86_64-linux-gnu/)
 
-link_directories(${LIB_BASE_PATH}libavcodec)
-link_directories(${LIB_BASE_PATH}libavformat)
-link_directories(${LIB_BASE_PATH}libavfilter)
+link_directories(${LIB_BASE_PATH})
 
 add_subdirectory(src)
 
