@@ -1,0 +1,20 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "main"
+
+jobs:
+  build:
+    runs-on: ubuntu-last
+    steps:
+      - name: Update apt 
+        run: sudo apt update
+      - name: Install compilers 
+        run: sudo apt install gcc g++ cmake
+      - name: Install librarys
+        run: sudo apt install libasound2-dev libavfilter-dev libavcodec-dev libavformat-dev libswresample-dev
+      - name: Build projects
+        run: cd ${GITHUB_WORKSPACE} && bash ${GITHUB_WORKSPACE}/build.sh
+
