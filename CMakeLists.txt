@@ -3,6 +3,8 @@ project(linux_audio_player LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -O3 -Werror")
+SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 include_directories(include)
 # should be changed according to the machine configurations
@@ -11,6 +13,8 @@ set(INCLUDE_BASE_PATH /usr/include/x86_64-linux-gnu/)
 include_directories(${LIB_BASE_PATH}libavcodec)
 include_directories(${LIB_BASE_PATH}libavformat)
 include_directories(${LIB_BASE_PATH}libavfilter)
+include_directories(${LIB_BASE_PATH}libavutil)
+
 
 set(LIB_BASE_PATH /usr/lib/x86_64-linux-gnu/)
 

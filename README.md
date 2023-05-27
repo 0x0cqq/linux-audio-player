@@ -14,7 +14,7 @@ Install dependencies by:
 ```bash
 sudo apt update
 sudo apt install gcc g++ cmake
-sudo apt install libasound2-dev libavfilter-dev libavcodec-dev libavformat-dev libswresample-dev
+sudo apt install libasound2-dev libavfilter-dev libavcodec-dev libavformat-dev libswresample-dev libavutil-dev
 ```
 
 Other dependencies 

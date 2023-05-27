@@ -10,6 +10,7 @@ set(FFMPEG_LIBS
     avcodec
     avfilter
     avformat
+    avutil
 )
 
 add_library(libaudioplayer ${SRC})
