@@ -1,5 +1,7 @@
 ## 交叉编译 ffmpeg
 
+> Disclaimer: <u>仅供参考</u>
+
 ### Host 上操作
 
 1. 下载源代码：`git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg`  
@@ -78,6 +80,7 @@
     * `--prefix=$SYSROOT/opt/ffmpeg`: 安装目标位置（但这么写会出问题，因为可用存储太小了会出问题，可以改成 `/mnt/usb/ffmpeg` 之类的）
 
     * 注：理论上这里应该 disable 一些无用的属性来减少产生的库文件的大小，否则放入嵌入式系统内可能相当困难，最终的库文件大概有一百到二百兆。具体可以观察 `./configure --help` 打印出的说明。（但事实上，加钱插个 U 盘就行）
+    * 注：报错的话，可以在 `ffbuild/config.log` 的**最后**找到报错的原因。
 
 7. 构建：`make`，需要很长的时间
 
@@ -94,7 +97,7 @@
 
 2. 插上一个 U 盘， U 盘文件格式为 FAT32
 
-3. `fdisk` 查看 U 盘名称，一般是 `/dev/sda1` 之类，通过大小和类型确认。
+3. `fdisk -l` 查看 U 盘名称，一般是 `/dev/sda1` 之类，通过大小和类型确认。
 
 4. 挂载：`mount -t vfat /dev/sda1 /mnt/usb`
 
