@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(linux_audio_player LANGUAGES CXX)
 
+set(CMAKE_SYSTEM_NAME Linux)
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -O3 -Werror")
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
@@ -15,9 +17,7 @@ include_directories(${LIB_BASE_PATH}libavformat)
 include_directories(${LIB_BASE_PATH}libavfilter)
 include_directories(${LIB_BASE_PATH}libavutil)
 
-
 set(LIB_BASE_PATH /usr/lib/x86_64-linux-gnu/)
-
 link_directories(${LIB_BASE_PATH})
 
 add_subdirectory(src)
