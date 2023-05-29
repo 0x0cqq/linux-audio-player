@@ -102,15 +102,13 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
                 numBytes = av_get_bytes_per_sample(outFormat);
                 // 修改采样率参数后，需要重新获取采样点的样本个数
                 outNbSamples = av_rescale_rnd(frame->nb_samples, outSampleRate, codec_ctx->sample_rate, AV_ROUND_ZERO);
-                // 获取需要的 buffer 大小：
-                int buffer_size = av_samples_get_buffer_size(NULL, outChannel, outNbSamples, outFormat, 1);
                 uint8_t *buffer[outChannel];
 
                 av_samples_alloc(buffer, NULL, outChannel, outNbSamples, outFormat, 0);
 
 
                 // 重采样
-                swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
+                int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
                 // callback(buffer, buffer_size);
 
@@ -121,11 +119,11 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
                     show = 0;
                 }
 
-                uint8_t output_buffer[numBytes * outNbSamples * outChannel];
+                uint8_t output_buffer[numBytes * realOutNbSamples * outChannel];
                 int cnt = 0;
 
                 // 使用 LRLRLRLRLRL（采样点为单位，采样点有几个字节，交替存储到文件，可使用pcm播放器播放）
-                for (int index = 0; index < outNbSamples; index++) {
+                for (int index = 0; index < realOutNbSamples; index++) {
                     for (int channel = 0; channel < codec_ctx->channels; channel++) {
                         // fwrite(frame->data[channel] + numBytes * index, 1, numBytes, outfile);
                         for(int i = 0; i < numBytes; i++) {
@@ -134,8 +132,8 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
                         fwrite(buffer[channel] + numBytes * index, 1, numBytes, outfile);
                     }
                 }
-                assert(cnt == numBytes * outNbSamples * outChannel);
-                callback(output_buffer, cnt);
+                assert(cnt == numBytes * realOutNbSamples * outChannel);
+                callback(output_buffer, realOutNbSamples);
                 av_freep(&buffer[0]);
                 av_packet_unref(packet);
             }
