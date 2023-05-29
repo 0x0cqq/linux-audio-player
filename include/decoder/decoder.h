@@ -1,9 +1,8 @@
-#ifndef DECODER_H
-#define DECODER_H
+#pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <unistd.h>
 #include <functional>
@@ -18,8 +17,7 @@ extern "C" {
 
 #define ERROR_STR_SIZE 1024
 
-class Decoder
-{
+class Decoder {
 private:
     AVFormatContext *format_ctx = nullptr;
     AVCodecContext *codec_ctx = nullptr;
@@ -33,7 +31,7 @@ private:
     int numBytes = 0;
     uint8_t* outData[2] = {0};
 
-    int dstNbSamples = 0; // 解码目标的采样率
+    int outNbSamples = 0; // 目标 frame 的 sample 个数
     int outChannel = 2;  // 重采样后输出的通道
     int outSampleRate = 44100;  // 重采样后输出的采样率
     enum AVSampleFormat outFormat = AV_SAMPLE_FMT_S16P; // 重采样后输出的格式
@@ -49,10 +47,7 @@ public:
     void openFile(char const file_path[]);
     void release();
     void alloc();
-    void decode(char const outputFile[]);
+    void decode(char const outputFile[], std::function<void(void *, size_t)> callback);
 
     bool finished() const;
 };
-
-
-#endif

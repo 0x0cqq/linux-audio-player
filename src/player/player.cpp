@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <exception>
+#include <functional>
+
 
 Player::Player(int channel, unsigned int sample_rate, snd_pcm_format_t sample_format, const std::string& device_name) {
     // 分配 hw_params 空间
