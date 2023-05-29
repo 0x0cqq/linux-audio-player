@@ -120,13 +120,22 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
                     fprintf(stderr, "numBytes: %d\n nb_samples: %d\n to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
                     show = 0;
                 }
+
+                uint8_t output_buffer[numBytes * outNbSamples * outChannel];
+                int cnt = 0;
+
                 // 使用 LRLRLRLRLRL（采样点为单位，采样点有几个字节，交替存储到文件，可使用pcm播放器播放）
                 for (int index = 0; index < outNbSamples; index++) {
                     for (int channel = 0; channel < codec_ctx->channels; channel++) {
                         // fwrite(frame->data[channel] + numBytes * index, 1, numBytes, outfile);
+                        for(int i = 0; i < numBytes; i++) {
+                            output_buffer[cnt++] = buffer[channel][numBytes * index + i];
+                        }
                         fwrite(buffer[channel] + numBytes * index, 1, numBytes, outfile);
                     }
                 }
+                assert(cnt == numBytes * outNbSamples * outChannel);
+                callback(output_buffer, cnt);
                 av_freep(&buffer[0]);
                 av_packet_unref(packet);
             }

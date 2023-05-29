@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(linux_audio_player LANGUAGES CXX)
 
 set(CMAKE_SYSTEM_NAME Linux)

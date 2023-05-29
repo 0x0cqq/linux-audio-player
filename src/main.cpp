@@ -13,13 +13,15 @@ extern "C" {
 }
 
 
-int main() {
-    const char* file_path = "../sample-15s.mp3";
-    const char* outputFile = "../output2.pcm";
+int main(int argc, char *argv[]) {
+    if(argc != 3) {
+        std::cerr << "Wrong input args count" << std::endl;
+        exit(1);
+    }
     Decoder decoder;
     Player player(2, 44100, SND_PCM_FORMAT_S16_LE);
-    decoder.openFile(file_path);
-    decoder.decode(outputFile, [&](void *buffer, int outSamplesize) {
+    decoder.openFile(argv[1]);
+    decoder.decode(argv[2], [&](void *buffer, int outSamplesize) {
         player.play_to_pcm(buffer, outSamplesize);
     });
 
