@@ -4,6 +4,10 @@ bool Decoder::finished() const {
     return isFinished;
 }
 
+Decoder::Decoder() {
+    alloc();
+}
+
 Decoder::~Decoder() {
     release();
 }

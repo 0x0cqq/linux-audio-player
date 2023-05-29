@@ -43,7 +43,7 @@ private:
 
     char errors[ERROR_STR_SIZE];
 public:
-    Decoder(){};
+    Decoder();
     ~Decoder();
 
     void openFile(char const file_path[]);
