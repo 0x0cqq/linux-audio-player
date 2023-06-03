@@ -15,9 +15,12 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 include_directories(include)
 
-include_directories("${CMAKE_SYSROOT}/mnt/usb/ffmpeg/include")
-link_directories("${CMAKE_SYSROOT}/mnt/usb/ffmpeg/lib")
-
+if(cross)
+    set(ffmpeg_root /mnt/usb/ffmpeg/)
+    message("Enable Cross Compile, ffmpeg root: ${ffmpeg_root}")
+    include_directories("${CMAKE_SYSROOT}${ffmpeg_root}include")
+    link_directories("${CMAKE_SYSROOT}${ffmpeg_root}lib")
+endif()
 
 add_subdirectory(src)
 
