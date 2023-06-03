@@ -1,7 +1,8 @@
 #include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <thread>
 #include "decoder/decoder.h"
 #include "player/player.h"
 
@@ -10,6 +11,13 @@ extern "C" {
     #include <libavformat/avformat.h>
     #include <libswresample/swresample.h>
     #include <libavutil/samplefmt.h>
+}
+
+void play_worker(Decoder &decoder, Player &player, std::string output_file_path) {
+    std::cout << "play_worker: start playing" << std::endl;
+    decoder.decode(output_file_path.c_str(), [&](void *buffer, int outSamplesize) {
+        player.play_to_pcm(buffer, outSamplesize);
+    });
 }
 
 
@@ -21,9 +29,28 @@ int main(int argc, char *argv[]) {
     Decoder decoder;
     Player player(2, 44100, SND_PCM_FORMAT_S16_LE);
     decoder.openFile(argv[1]);
-    decoder.decode(argv[2], [&](void *buffer, int outSamplesize) {
-        player.play_to_pcm(buffer, outSamplesize);
-    });
+
+    std::string output_file_path = argv[2];
+
+    std::thread t1(play_worker, std::ref(decoder), std::ref(player), output_file_path);
+
+    sleep(5);
+
+    decoder.play();
+
+    sleep(5);
+
+    decoder.pause();
+
+    sleep(5);
+
+    decoder.play();
+
+    sleep(5);
+
+    decoder.jump(0.0);
+
+    t1.join();
 
     return 0;
 }

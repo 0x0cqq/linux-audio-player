@@ -1,9 +1,5 @@
 #include "decoder/decoder.h"
 
-bool Decoder::finished() const {
-    return isFinished;
-}
-
 Decoder::Decoder() {
     alloc();
 }
@@ -78,13 +74,43 @@ void Decoder::openFile(char const file_path[]) {
 }
 
 void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)> callback) {
+
     FILE *outfile = fopen(outputFile, "wb");
     if(!outfile) {
         throw(std::runtime_error("outfilie fopen failed!"));
     }
 
-    // 读取一帧数据的数据包
-    while (av_read_frame(format_ctx, packet) >= 0) {   
+    // 用来存储返回值
+    int ret = 0;
+    
+    while (true) {
+        if (!isPlaying) {
+            // 进入等待状态，直到 isPlaying 为 true
+            // 是否可以用 condition_variable?
+            continue;
+        }
+        // 如果有跳转 
+        {
+            // 获取锁
+            std::lock_guard<std::mutex> lock(jumpMutex);
+            if(haveJumpSignal) {
+                // 跳转到目标时间戳
+                ret = av_seek_frame(format_ctx, stream_index, int64_t(jumpTarget * AV_TIME_BASE), AVSEEK_FLAG_BACKWARD);
+                if (ret < 0) {
+                    av_strerror(ret, errors, ERROR_STR_SIZE);
+                    av_log(NULL, AV_LOG_ERROR, "Failed to av_seek_frame, %d(%s)\n", ret, errors);
+                    throw std::runtime_error("Failed to av_seek_framem, " + std::string(errors));
+                }
+                haveJumpSignal = false;
+            }
+        }
+        // 读取一帧数据的数据包
+        ret = av_read_frame(format_ctx, packet);
+        if(ret < 0) {
+            // 读取失败, 文件读完了
+            isPlaying = false;
+            continue; 
+        }
         // 将封装包发往解码器
         if (packet->stream_index == stream_index) {
             // fprintf(stderr, "stream_index: %d\n", packet->stream_index);
@@ -141,6 +167,29 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
     }
 
     fclose(outfile);
+}
+
+
+bool Decoder::jump(double jumpTarget) {
+    std::lock_guard<std::mutex> lock(jumpMutex);
+    if (jumpTarget < 0 || jumpTarget > format_ctx->duration / AV_TIME_BASE) {
+        return false;
+    }
+    this->jumpTarget = jumpTarget;
+    haveJumpSignal = true;
+    return true;
+}
+
+bool Decoder::finished() const {
+    return isFinished;
+}
+
+void Decoder::play() {
+    isPlaying = true;
+}
+
+void Decoder::pause() {
+    isPlaying = false;
 }
 
 void Decoder::release() {
