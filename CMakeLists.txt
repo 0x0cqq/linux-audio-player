@@ -6,22 +6,21 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE DEBUG)
 # set(CMAKE_BUILD_TYPE RELEASE)
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -g -O0")
+
+set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Werror")
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+
 
 include_directories(include)
-# should be changed according to the machine configurations
-# especially migrate this code to embedded environments
-set(INCLUDE_BASE_PATH /usr/include/x86_64-linux-gnu/)
-include_directories(${LIB_BASE_PATH}libavcodec)
-include_directories(${LIB_BASE_PATH}libavformat)
-include_directories(${LIB_BASE_PATH}libavfilter)
-include_directories(${LIB_BASE_PATH}libavutil)
 
-set(LIB_BASE_PATH /usr/lib/x86_64-linux-gnu/)
-link_directories(${LIB_BASE_PATH})
+if(cross)
+    set(ffmpeg_root /mnt/usb/ffmpeg/)
+    message("Enable Cross Compile, ffmpeg root: ${ffmpeg_root}")
+    include_directories("${CMAKE_SYSROOT}${ffmpeg_root}include")
+    link_directories("${CMAKE_SYSROOT}${ffmpeg_root}lib")
+endif()
 
 add_subdirectory(src)
 

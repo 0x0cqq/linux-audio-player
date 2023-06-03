@@ -51,6 +51,8 @@ Recommended `.vscode/c_cpp_properties.json`:
 
 In project root directory, `bash build.sh`.
 
+> When cross compiling, replace `cmake .. ` with `cmake .. -Dcross=true`.
+
 ### Rebuild
 
 Simply remove `build` directory by `rm -rf build`.

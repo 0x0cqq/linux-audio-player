@@ -22,4 +22,4 @@ add_library(libaudioplayer ${SRC})
 target_link_libraries(libaudioplayer ${FFMPEG_LIBS} ${ALSA_LIBS})
 
 add_executable(audio_player ${MAIN_SRC})
-target_link_libraries(audio_player libaudioplayer)
+target_link_libraries(audio_player libaudioplayer pthread)

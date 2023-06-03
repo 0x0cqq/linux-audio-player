@@ -11,6 +11,7 @@
 extern "C" {
     #include <alsa/asoundlib.h>
     #include <libavformat/avformat.h>
+    #include <libavcodec/avcodec.h>
     #include <libswresample/swresample.h>
     #include <libavutil/samplefmt.h>
     
