@@ -95,7 +95,9 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             std::lock_guard<std::mutex> lock(jumpMutex);
             if(haveJumpSignal) {
                 // 跳转到目标时间戳
-                ret = av_seek_frame(format_ctx, stream_index, int64_t(jumpTarget * AV_TIME_BASE), AVSEEK_FLAG_BACKWARD);
+                std::cout << "Jump Target: " << jumpTarget << std::endl; 
+                AVStream * stream = format_ctx->streams[packet->stream_index];
+                ret = av_seek_frame(format_ctx, packet->stream_index, int64_t(jumpTarget * av_q2d(stream->time_base)), AVSEEK_FLAG_ANY);
                 if (ret < 0) {
                     av_strerror(ret, errors, ERROR_STR_SIZE);
                     av_log(NULL, AV_LOG_ERROR, "Failed to av_seek_frame, %d(%s)\n", ret, errors);
@@ -114,12 +116,6 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
         // 将封装包发往解码器
         if (packet->stream_index == stream_index) {
             // fprintf(stderr, "stream_index: %d\n", packet->stream_index);
-            {
-                // 获取锁
-                std::lock_guard<std::mutex> lock(currentPosMutex);
-                AVStream * stream = format_ctx->streams[packet->stream_index];
-                currentPos = frame->pts * av_q2d(stream->time_base);
-            }
             ret = avcodec_send_packet(codec_ctx, packet);
             if (ret) {
                 av_strerror(ret, errors, ERROR_STR_SIZE);
@@ -129,6 +125,12 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             }
 
             while (!avcodec_receive_frame(codec_ctx, frame)) {
+                {
+                    // 获取锁
+                    std::lock_guard<std::mutex> lock(currentPosMutex);
+                    AVStream * stream = format_ctx->streams[packet->stream_index];
+                    currentPos = frame->pts * av_q2d(stream->time_base);
+                }
                 // fprintf(stderr, "frame->nb_samples: %d\n", frame->nb_samples);
                 // 获取每个采样点的字节大小
                 numBytes = av_get_bytes_per_sample(outFormat);
