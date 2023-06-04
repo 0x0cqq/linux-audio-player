@@ -34,8 +34,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
 
     // set parameter: 匹配原始音频采样率sample rate，数据格式sample_fmt， channel_layout声道
     if (avfilter_init_str(abuffer_ctx, abufferString.c_str()) < 0) {
-        fprintf(stderr, "error init abuffer filter\n");
-        return -1;
+        throw std::runtime_error( "error init abuffer filter\n");
     } 
 
     // init atempo filter
@@ -46,15 +45,13 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
     AVDictionary *args = NULL;
     av_dict_set(&args, "tempo", value, 0);//这里传入外部参数，可以动态修改
     if (avfilter_init_dict(atempo_ctx, &args) < 0) {
-        fprintf(stderr, "error init atempo filter\n");
-        return -1;
+        throw std::runtime_error("error init atempo filter\n");
     }
 
     const AVFilter *aformat = avfilter_get_by_name("aformat");
     AVFilterContext *aformat_ctx = avfilter_graph_alloc_filter(graph, aformat, "aformat");
     if (avfilter_init_str(aformat_ctx, aformatString.c_str()) < 0) {
-        fprintf(stderr, "error init aformat filter\n");
-        return -1;
+        throw std::runtime_error("error init aformat filter");
     }
 
     // 初始化sink用于输出
@@ -62,32 +59,26 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
     AVFilterContext *sink_ctx = avfilter_graph_alloc_filter(graph, sink, "sink");
 
     if (avfilter_init_str(sink_ctx, NULL) < 0) {//无需参数
-        fprintf(stderr, "error init sink filter\n");
-        return -1;
+        throw std::runtime_error("error init sink filter\n");
     }
 
     // 链接各个filter上下文
     if (avfilter_link(abuffer_ctx, 0, atempo_ctx, 0) != 0) {
-        fprintf(stderr, "error link to atempo filter\n");
-        return -1;
+        throw std::runtime_error("error link to atempo filter\n");
     }
     if (avfilter_link(atempo_ctx, 0, aformat_ctx, 0) != 0) {
-        fprintf(stderr, "error link to aformat filter\n");
-        return -1;
+        throw std::runtime_error("error link to aformat filter\n");
     }
     if (avfilter_link(aformat_ctx, 0, sink_ctx, 0) != 0) {
-        fprintf(stderr, "error link to sink filter\n");
-        return -1;
+        throw std::runtime_error("error link to sink filter\n");
     }
     if (avfilter_graph_config(graph, NULL) < 0) {
-        fprintf(stderr, "error config filter graph\n");
-        return -1;
+        throw std::runtime_error("error config filter graph\n");
     }
 
     *pGraph = graph;
     *src = abuffer_ctx;
     *out = sink_ctx;
-    fprintf(stderr, "init filter success...\n");
     return 0;
 }
 
@@ -97,7 +88,7 @@ void Decoder::openFile(char const file_path[]) {
 
     isFileOpened = false;
 
-    std::cerr << "openFile: " << file_path << std::endl;
+    std::cerr << "Open file name: " << file_path << std::endl;
 
     // 假如重新打开的话需要 release， release 一个空指针不会出错
     release();
@@ -124,7 +115,6 @@ void Decoder::openFile(char const file_path[]) {
     if (stream_index < 0) {
         throw(std::runtime_error("Failed to find audio stream"));
     }
-    fprintf(stderr, "stream_index: %d\n", stream_index);
 
     // 初始化音频解码器上下文
     codec_ctx = avcodec_alloc_context3(codec);
@@ -143,13 +133,18 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to open codec"));
     }
 
-    fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
-        codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, 
-        av_get_sample_fmt_name(codec_ctx->sample_fmt));
+    std::cerr 
+            << "输入音乐, 解码器名称: " << codec->name 
+            << " 通道数: " << codec_ctx->channels
+            << " 采样率: " << codec_ctx->sample_rate 
+            << " 通道布局: " << av_get_default_channel_layout(codec_ctx->channels)
+            << " 采样格式: " << av_get_sample_fmt_name(codec_ctx->sample_fmt) << std::endl << std::flush;
 
-    fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
-        outChannel, av_get_default_channel_layout(outChannel), 
-        outSampleRate, av_get_sample_fmt_name(outFormat));
+    std::cerr 
+        << "Decoder 输出格式, 通道数: " << outChannel
+        << " 采样率: " << outSampleRate
+        << " 通道布局: " << av_get_default_channel_layout(outChannel)
+        << " 采样格式: " << av_get_sample_fmt_name(outFormat) << std::endl << std::flush;
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,
@@ -166,9 +161,13 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to swr_init(pSwrContext)"));
     }
 
+    std::cerr << "swr_init success" << std::endl << std::flush;
+
     if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(currentTempo).c_str()) != 0) {
         throw(std::runtime_error("Codec not init audio filter!"));
     }
+
+    std::cerr << "avfilter_init success..." << std::endl << std::flush;
 
     isFileOpened = true;
 }
@@ -234,12 +233,10 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
             }
             // 将封装包发往解码器
             if (packet->stream_index == stream_index) {
-                // fprintf(stderr, "stream_index: %d\n", packet->stream_index);
                 ret = avcodec_send_packet(codec_ctx, packet);
                 if (ret) {
                     av_strerror(ret, errors, ERROR_STR_SIZE);
                     av_log(NULL, AV_LOG_ERROR, "Failed to avcodec_send_packet, %d(%s)\n", ret, errors);
-                    fprintf(stderr, "Failed to avcodec_send_packet\n");
                     break;
                 }
 
@@ -250,7 +247,6 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         AVStream * stream = format_ctx->streams[packet->stream_index];
                         currentPos = frame->pts * av_q2d(stream->time_base);
                     }
-                    // fprintf(stderr, "frame->nb_samples: %d\n", frame->nb_samples);
                     // 获取每个采样点的字节大小
                     numBytes = av_get_bytes_per_sample(outFormat);
                     // 修改采样率参数后，需要重新获取采样点的样本个数
@@ -261,7 +257,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
 
                     // filter
                     if (av_buffersrc_add_frame(in_ctx, frame) < 0) {
-                        fprintf(stderr, "Failed to allocate filtered frame\n");
+                        std::cerr << "Failed to allocate filtered frame" << std::endl << std::flush;
                         break;
                     }
 
@@ -272,7 +268,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         // 第一次显示
                         static int show = 1;
                         if (show == 1) {
-                            fprintf(stderr, "numBytes: %d\n nb_samples: %d\n to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
+                            std::cerr << "numBytes: " << numBytes << " nb_samples: " << frame->nb_samples << " to outNbSamples: " << outNbSamples << std::endl << std::flush;
                             show = 0;
                         }
 
