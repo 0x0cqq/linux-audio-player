@@ -34,28 +34,29 @@ int main(int argc, char *argv[]) {
 
     std::thread t1(play_worker, std::ref(decoder), std::ref(player), output_file_path);
 
-
     decoder.play();
 
-    sleep(15);
+//     decoder.play();
 
-    auto time = decoder.getTime();
+//     sleep(15);
 
-    std::cout << "Time: " << time << std::endl;
+//     auto time = decoder.getTime();
 
-    decoder.jump(time - 5);
+//     std::cout << "Time: " << time << std::endl;
 
-    sleep(2);
+//     decoder.jump(time - 5);
 
-    auto time2 = decoder.getTime();
+//     sleep(2);
 
-    std::cout << "Time: " << time2 << std::endl;
+//     auto time2 = decoder.getTime();
 
-    sleep(5);
+//     std::cout << "Time: " << time2 << std::endl;
 
-    auto time3 = decoder.getTime();
+//     sleep(5);
 
-    std::cout << "Time: " << time3 << std::endl;
+//     auto time3 = decoder.getTime();
+
+//     std::cout << "Time: " << time3 << std::endl;
 
     t1.join();
 

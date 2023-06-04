@@ -14,6 +14,73 @@ void Decoder::alloc() {
     frame = av_frame_alloc();
 }
 
+int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, char *value) {
+    // init
+    AVFilterGraph *graph = avfilter_graph_alloc();
+    
+    // accept abuffer for receving input
+    const AVFilter *abuffer = avfilter_get_by_name("abuffer");
+    AVFilterContext *abuffer_ctx = avfilter_graph_alloc_filter(graph, abuffer, "src");
+
+    // set parameter: 匹配原始音频采样率sample rate，数据格式sample_fmt， channel_layout声道
+    if (avfilter_init_str(abuffer_ctx, "sample_rate=44100:sample_fmt=fltp:channel_layout=stereo") < 0) {
+        fprintf(stderr, "error init abuffer filter\n");
+        return -1;
+    } 
+
+    // init atempo filter
+    const AVFilter *atempo = avfilter_get_by_name("atempo");
+    AVFilterContext *atempo_ctx = avfilter_graph_alloc_filter(graph, atempo, "atempo");
+
+    // 这里采用av_dict_set设置参数
+    AVDictionary *args = NULL;
+    av_dict_set(&args, "tempo", value, 0);//这里传入外部参数，可以动态修改
+    if (avfilter_init_dict(atempo_ctx, &args) < 0) {
+        fprintf(stderr, "error init atempo filter\n");
+        return -1;
+    }
+
+    const AVFilter *aformat = avfilter_get_by_name("aformat");
+    AVFilterContext *aformat_ctx = avfilter_graph_alloc_filter(graph, aformat, "aformat");
+    if (avfilter_init_str(aformat_ctx, "sample_rates=44100:sample_fmts=fltp:channel_layouts=stereo") < 0) {
+        fprintf(stderr, "error init aformat filter\n");
+        return -1;
+    }
+
+    // 初始化sink用于输出
+    const AVFilter *sink = avfilter_get_by_name("abuffersink");
+    AVFilterContext *sink_ctx = avfilter_graph_alloc_filter(graph, sink, "sink");
+
+    if (avfilter_init_str(sink_ctx, NULL) < 0) {//无需参数
+        fprintf(stderr, "error init sink filter\n");
+        return -1;
+    }
+
+    // 链接各个filter上下文
+    if (avfilter_link(abuffer_ctx, 0, atempo_ctx, 0) != 0) {
+        fprintf(stderr, "error link to atempo filter\n");
+        return -1;
+    }
+    if (avfilter_link(atempo_ctx, 0, aformat_ctx, 0) != 0) {
+        fprintf(stderr, "error link to aformat filter\n");
+        return -1;
+    }
+    if (avfilter_link(aformat_ctx, 0, sink_ctx, 0) != 0) {
+        fprintf(stderr, "error link to sink filter\n");
+        return -1;
+    }
+    if (avfilter_graph_config(graph, NULL) < 0) {
+        fprintf(stderr, "error config filter graph\n");
+        return -1;
+    }
+
+    *pGraph = graph;
+    *src = abuffer_ctx;
+    *out = sink_ctx;
+    fprintf(stderr, "init filter success...\n");
+    return 0;
+}
+
 void Decoder::openFile(char const file_path[]) {
     if (!format_ctx || !packet || !frame) {
         throw(std::runtime_error("Failed to alloc"));
@@ -78,6 +145,10 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
     FILE *outfile = fopen(outputFile, "wb");
     if(!outfile) {
         throw(std::runtime_error("outfilie fopen failed!"));
+    }
+
+    if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, "2.0") != 0) {
+        throw(std::runtime_error("Codec not init audio filter!"));
     }
 
     // 用来存储返回值
@@ -145,32 +216,47 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
 
 
                 // 重采样
-                int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
+                // int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
                 // callback(buffer, buffer_size);
 
-                // 第一次显示
-                static int show = 1;
-                if (show == 1) {
-                    fprintf(stderr, "numBytes: %d\n nb_samples: %d\n to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
-                    show = 0;
+                // filter
+                if (av_buffersrc_add_frame(in_ctx, frame) < 0) {
+                    fprintf(stderr, "Failed to allocate filtered frame\n");
+                    break;
                 }
 
-                uint8_t output_buffer[numBytes * realOutNbSamples * outChannel];
-                int cnt = 0;
+                while (av_buffersink_get_frame(out_ctx, frame) >= 0) {
+                    // 重采样
+                    int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
-                // 使用 LRLRLRLRLRL（采样点为单位，采样点有几个字节，交替存储到文件，可使用pcm播放器播放）
-                for (int index = 0; index < realOutNbSamples; index++) {
-                    for (int channel = 0; channel < codec_ctx->channels; channel++) {
-                        // fwrite(frame->data[channel] + numBytes * index, 1, numBytes, outfile);
-                        for(int i = 0; i < numBytes; i++) {
-                            output_buffer[cnt++] = buffer[channel][numBytes * index + i];
-                        }
-                        fwrite(buffer[channel] + numBytes * index, 1, numBytes, outfile);
+                    // 第一次显示
+                    static int show = 1;
+                    if (show == 1) {
+                        fprintf(stderr, "numBytes: %d\n nb_samples: %d\n to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
+                        show = 0;
                     }
+
+                    uint8_t output_buffer[numBytes * realOutNbSamples * outChannel];
+                    int cnt = 0;
+
+                    // 使用 LRLRLRLRLRL（采样点为单位，采样点有几个字节，交替存储到文件，可使用pcm播放器播放）
+                    for (int index = 0; index < realOutNbSamples; index++) {
+                        for (int channel = 0; channel < codec_ctx->channels; channel++) {
+                            // fwrite(frame->data[channel] + numBytes * index, 1, numBytes, outfile);
+                            for(int i = 0; i < numBytes; i++) {
+                                output_buffer[cnt++] = buffer[channel][numBytes * index + i];
+                            }
+                            fwrite(buffer[channel] + numBytes * index, 1, numBytes, outfile);
+                        }
+                    }
+                    assert(cnt == numBytes * realOutNbSamples * outChannel);
+                    callback(output_buffer, realOutNbSamples);
+
+                    av_frame_unref(frame);
+                    break;
                 }
-                assert(cnt == numBytes * realOutNbSamples * outChannel);
-                callback(output_buffer, realOutNbSamples);
+
                 av_freep(&buffer[0]);
                 av_packet_unref(packet);
             }

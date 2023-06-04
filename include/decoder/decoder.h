@@ -14,7 +14,9 @@ extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libswresample/swresample.h>
     #include <libavutil/samplefmt.h>
-    
+    #include <libavfilter/avfilter.h>
+    #include <libavfilter/buffersink.h>
+    #include <libavfilter/buffersrc.h>
 }
 
 #define ERROR_STR_SIZE 1024
@@ -28,6 +30,11 @@ private:
     AVFrame *frame = nullptr;
     SwrContext *swr_ctx = nullptr;
     FILE *outfile = nullptr;
+
+    // atempo filter
+    AVFilterContext* in_ctx = NULL;
+    AVFilterContext* out_ctx = NULL;
+    AVFilterGraph *filter_graph = NULL;
 
     int ret = 0;
     int numBytes = 0;
@@ -112,6 +119,8 @@ public:
      * 
      */
     void pause();
+
+    int init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, char *value);
 
     bool finished() const;
     double getTime();
