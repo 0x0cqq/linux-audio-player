@@ -15,10 +15,19 @@ void Decoder::alloc() {
 }
 
 int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, const char *value) {
-    if (parameter.empty()) {
-        fprintf(stderr, "parameter is empty\n");
-        return -1;
+    // 格式化filter init的parameter
+    std::string sampleRate = std::to_string(codec_ctx->sample_rate);
+    std::string sampleFmt = std::string(av_get_sample_fmt_name(codec_ctx->sample_fmt));
+    std::string sampleChannel;
+    if (codec_ctx->channels == 1) {
+        sampleChannel = "mono";
+    } else {
+        sampleChannel = "stereo";
     }
+
+    std::string abufferString = "sample_rate=" + sampleRate + ":sample_fmt=" + sampleFmt + ":channel_layout=" + sampleChannel;
+    std::string aformatString = "sample_fmts=" + sampleFmt + ":sample_rates=" + sampleRate + ":channel_layouts=" + sampleChannel;
+
     // init
     AVFilterGraph *graph = avfilter_graph_alloc();
     
@@ -27,7 +36,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
     AVFilterContext *abuffer_ctx = avfilter_graph_alloc_filter(graph, abuffer, "src");
 
     // set parameter: 匹配原始音频采样率sample rate，数据格式sample_fmt， channel_layout声道
-    if (avfilter_init_str(abuffer_ctx, parameter.c_str()) < 0) {
+    if (avfilter_init_str(abuffer_ctx, abufferString.c_str()) < 0) {
         fprintf(stderr, "error init abuffer filter\n");
         return -1;
     } 
@@ -46,7 +55,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
 
     const AVFilter *aformat = avfilter_get_by_name("aformat");
     AVFilterContext *aformat_ctx = avfilter_graph_alloc_filter(graph, aformat, "aformat");
-    if (avfilter_init_str(aformat_ctx, parameter.c_str()) < 0) {
+    if (avfilter_init_str(aformat_ctx, aformatString.c_str()) < 0) {
         fprintf(stderr, "error init aformat filter\n");
         return -1;
     }
@@ -131,18 +140,6 @@ void Decoder::openFile(char const file_path[]) {
     fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
         outChannel, av_get_default_channel_layout(outChannel), 
         outSampleRate, av_get_sample_fmt_name(outFormat));
-
-    // 格式化filter init的parameter
-    std::string sampleRate = "sample_rates=" + std::to_string(outSampleRate) + ":";
-    std::string sampleFmt = "sample_fmt=" + std::string(av_get_sample_fmt_name(outFormat)) + ":";
-    std::string sampleChannel;
-    if (outChannel == 1) {
-        sampleChannel = "channel_layout=mono";
-    } else {
-        sampleChannel = "channel_layout=stereo";
-    }
-
-    parameter = sampleRate + sampleFmt + sampleChannel;
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,

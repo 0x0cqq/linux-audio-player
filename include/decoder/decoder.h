@@ -35,7 +35,6 @@ private:
     AVFilterContext* in_ctx = NULL;
     AVFilterContext* out_ctx = NULL;
     AVFilterGraph *filter_graph = NULL;
-    std::string parameter;
 
     int ret = 0;
     int numBytes = 0;

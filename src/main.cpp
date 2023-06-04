@@ -38,7 +38,8 @@ int main(int argc, char *argv[]) {
 
 //     decoder.play();
 
-//     sleep(15);
+    sleep(15);
+    decoder.changeTempo(2.0);
 
 //     auto time = decoder.getTime();
 
