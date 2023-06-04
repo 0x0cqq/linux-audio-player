@@ -170,6 +170,13 @@ public:
     double getTime();
 
     /**
+     * @brief 获取总的播放时间
+     * 
+     * @return double 以秒为单位的时间
+     */
+    double getTotalTime();
+
+    /**
      * @brief 修改播放速度
      * 
      * @param tempo 播放速度，范围为 0.5 ~ 2.0

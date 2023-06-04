@@ -34,12 +34,25 @@ void Controller::pause() {
     decoder->pause();
 }
 
+void Controller::set_tempo(double tempo) {
+    decoder->changeTempo(tempo);
+}
+
+void Controller::jump(double jumpTarget) {
+    decoder->jump(jumpTarget);
+}
+
 void Controller::play() {
     if(current_select_index == -1) {
         std::cerr << "No song selected" << std::endl;
         return;
     }
     decoder->play();
+}
+
+void Controller::get_time(double &current_time, double &total_time) {
+    current_time = decoder->getTime();
+    total_time = decoder->getTotalTime();
 }
 
 Controller::~Controller() {

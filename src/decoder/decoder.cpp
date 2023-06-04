@@ -314,6 +314,7 @@ bool Decoder::jump(double jumpTarget) {
 bool Decoder::changeTempo(double tempo) {
     std::lock_guard<std::mutex> lock(tempoMutex);
     if (tempo < 0.25 || tempo > 2) {
+        std::cerr << "Tempo out of range, should be in [0.5,2]. Your value is " << tempo << std::endl << std::flush;
         return false;
     }
     this->targetTempo = tempo;
@@ -326,7 +327,12 @@ double Decoder::getTime() {
     return currentPos;
 }
 
-void Decoder::play() {
+double Decoder::getTotalTime() {
+    return double(format_ctx->duration) / AV_TIME_BASE;
+}
+
+void Decoder::play()
+{
     isPlaying = true;
 }
 

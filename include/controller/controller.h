@@ -56,6 +56,12 @@ public:
 
     void play();
 
+    void set_tempo(double tempo);
+
+    void jump(double jumpTarget);
+
+    void get_time(double &current_time, double &total_time);
+
     void change_song(int index);
 
     void play_worker();
