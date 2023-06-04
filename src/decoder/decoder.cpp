@@ -120,9 +120,9 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to open codec"));
     }
 
-    fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %d\n", codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, codec_ctx->sample_fmt);
+    fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, av_get_sample_fmt_name(codec_ctx->sample_fmt));
 
-    fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %d\n", outChannel, av_get_default_channel_layout(outChannel), outSampleRate, outFormat);
+    fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", outChannel, av_get_default_channel_layout(outChannel), outSampleRate, av_get_sample_fmt_name(outFormat));
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,
