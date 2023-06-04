@@ -23,7 +23,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
     AVFilterContext *abuffer_ctx = avfilter_graph_alloc_filter(graph, abuffer, "src");
 
     // set parameter: 匹配原始音频采样率sample rate，数据格式sample_fmt， channel_layout声道
-    if (avfilter_init_str(abuffer_ctx, "sample_rate=44100:sample_fmt=s16:channel_layout=stereo") < 0) {
+    if (avfilter_init_str(abuffer_ctx, "sample_rate=44100:sample_fmt=fltp:channel_layout=stereo") < 0) {
         fprintf(stderr, "error init abuffer filter\n");
         return -1;
     } 
@@ -42,7 +42,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
 
     const AVFilter *aformat = avfilter_get_by_name("aformat");
     AVFilterContext *aformat_ctx = avfilter_graph_alloc_filter(graph, aformat, "aformat");
-    if (avfilter_init_str(aformat_ctx, "sample_rates=44100:sample_fmts=s16:channel_layouts=stereo") < 0) {
+    if (avfilter_init_str(aformat_ctx, "sample_rates=44100:sample_fmts=fltp:channel_layouts=stereo") < 0) {
         fprintf(stderr, "error init aformat filter\n");
         return -1;
     }
@@ -205,7 +205,7 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
 
 
                 // 重采样
-                int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
+                // int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
                 // callback(buffer, buffer_size);
 
@@ -217,7 +217,7 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
 
                 while (av_buffersink_get_frame(out_ctx, frame) >= 0) {
                     // 重采样
-                    realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
+                    int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
                     // 第一次显示
                     static int show = 1;

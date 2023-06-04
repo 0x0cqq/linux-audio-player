@@ -34,21 +34,7 @@ int main(int argc, char *argv[]) {
 
     std::thread t1(play_worker, std::ref(decoder), std::ref(player), output_file_path);
 
-    sleep(5);
-
     decoder.play();
-
-    sleep(5);
-
-    decoder.pause();
-
-    sleep(5);
-
-    decoder.play();
-
-    sleep(5);
-
-    decoder.jump(0.0);
 
     t1.join();
 
