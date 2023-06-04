@@ -35,6 +35,7 @@ private:
     AVFilterContext* in_ctx = NULL;
     AVFilterContext* out_ctx = NULL;
     AVFilterGraph *filter_graph = NULL;
+    std::string parameter;
 
     int ret = 0;
     int numBytes = 0;
@@ -79,6 +80,13 @@ private:
     std::mutex jumpMutex;
     std::mutex currentPosMutex;
 
+    double currentTempo = 1.0;
+    double targetTempo = 0.0;
+
+    bool isTempoChanged = false;
+
+    std::mutex tempoMutex;
+
     /**
      * @brief 音频流的索引
      * 
@@ -120,8 +128,10 @@ public:
      */
     void pause();
 
-    int init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, char *value);
+    int init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, const char *value);
 
     bool finished() const;
     double getTime();
+
+    bool changeTempo(double tempo);
 };

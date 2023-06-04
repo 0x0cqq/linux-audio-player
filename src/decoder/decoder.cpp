@@ -14,7 +14,11 @@ void Decoder::alloc() {
     frame = av_frame_alloc();
 }
 
-int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, char *value) {
+int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, const char *value) {
+    if (parameter.empty()) {
+        fprintf(stderr, "parameter is empty\n");
+        return -1;
+    }
     // init
     AVFilterGraph *graph = avfilter_graph_alloc();
     
@@ -23,7 +27,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
     AVFilterContext *abuffer_ctx = avfilter_graph_alloc_filter(graph, abuffer, "src");
 
     // set parameter: 匹配原始音频采样率sample rate，数据格式sample_fmt， channel_layout声道
-    if (avfilter_init_str(abuffer_ctx, "sample_rate=44100:sample_fmt=fltp:channel_layout=stereo") < 0) {
+    if (avfilter_init_str(abuffer_ctx, parameter.c_str()) < 0) {
         fprintf(stderr, "error init abuffer filter\n");
         return -1;
     } 
@@ -42,7 +46,7 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
 
     const AVFilter *aformat = avfilter_get_by_name("aformat");
     AVFilterContext *aformat_ctx = avfilter_graph_alloc_filter(graph, aformat, "aformat");
-    if (avfilter_init_str(aformat_ctx, "sample_rates=44100:sample_fmts=fltp:channel_layouts=stereo") < 0) {
+    if (avfilter_init_str(aformat_ctx, parameter.c_str()) < 0) {
         fprintf(stderr, "error init aformat filter\n");
         return -1;
     }
@@ -120,9 +124,25 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to open codec"));
     }
 
-    fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, av_get_sample_fmt_name(codec_ctx->sample_fmt));
+    fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
+        codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, 
+        av_get_sample_fmt_name(codec_ctx->sample_fmt));
 
-    fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", outChannel, av_get_default_channel_layout(outChannel), outSampleRate, av_get_sample_fmt_name(outFormat));
+    fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
+        outChannel, av_get_default_channel_layout(outChannel), 
+        outSampleRate, av_get_sample_fmt_name(outFormat));
+
+    // 格式化filter init的parameter
+    std::string sampleRate = "sample_rates=" + std::to_string(outSampleRate) + ":";
+    std::string sampleFmt = "sample_fmt=" + std::string(av_get_sample_fmt_name(outFormat)) + ":";
+    std::string sampleChannel;
+    if (outChannel == 1) {
+        sampleChannel = "channel_layout=mono";
+    } else {
+        sampleChannel = "channel_layout=stereo";
+    }
+
+    parameter = sampleRate + sampleFmt + sampleChannel;
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,
@@ -147,7 +167,7 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
         throw(std::runtime_error("outfilie fopen failed!"));
     }
 
-    if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, "2.0") != 0) {
+    if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(currentTempo).c_str()) != 0) {
         throw(std::runtime_error("Codec not init audio filter!"));
     }
 
@@ -159,6 +179,18 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             // 进入等待状态，直到 isPlaying 为 true
             // 是否可以用 condition_variable?
             continue;
+        }
+        {
+            std::lock_guard<std::mutex> lock(tempoMutex);
+            if (isTempoChanged) {
+                avfilter_graph_free(&filter_graph);
+                if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(targetTempo).c_str()) != 0) {
+                    throw(std::runtime_error("Codec not init audio filter!"));
+                }
+                isTempoChanged = false;
+
+                avcodec_flush_buffers( codec_ctx );
+            }
         }
         // 如果有跳转 
         {
@@ -214,12 +246,6 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
 
                 av_samples_alloc(buffer, NULL, outChannel, outNbSamples, outFormat, 0);
 
-
-                // 重采样
-                // int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
-
-                // callback(buffer, buffer_size);
-
                 // filter
                 if (av_buffersrc_add_frame(in_ctx, frame) < 0) {
                     fprintf(stderr, "Failed to allocate filtered frame\n");
@@ -274,6 +300,16 @@ bool Decoder::jump(double jumpTarget) {
     }
     this->jumpTarget = jumpTarget;
     haveJumpSignal = true;
+    return true;
+}
+
+bool Decoder::changeTempo(double tempo) {
+    std::lock_guard<std::mutex> lock(tempoMutex);
+    if (tempo < 0.25 || tempo > 2) {
+        return false;
+    }
+    this->targetTempo = tempo;
+    isTempoChanged = true;
     return true;
 }
 
