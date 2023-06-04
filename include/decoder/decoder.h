@@ -64,6 +64,7 @@ private:
      * 
      */
     double jumpTarget = 0.0;
+    double currentPos = 0.0;
 
     /**
      * @brief 是否播放完毕
@@ -76,6 +77,7 @@ private:
      * 
      */
     std::mutex jumpMutex;
+    std::mutex currentPosMutex;
 
     /**
      * @brief 音频流的索引
@@ -121,4 +123,5 @@ public:
     int init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, AVFilterContext **out, char *value);
 
     bool finished() const;
+    double getTime();
 };

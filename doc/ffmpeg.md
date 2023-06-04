@@ -67,7 +67,7 @@
     构建：
     
     ```bash
-    ./configure --enable-cross-compile --cross-prefix=arm-ostl-linux-gnueabi- --arch=armv7a --sysroot=$SYSROOT --cpu=cortex-a7 --enable-thumb --target-os=linux --extra-cflags="-mfpu=neon-vfpv4 -mfloat-abi=hard" --prefix=$SYSROOT/opt/ffmpeg
+    ./configure --enable-cross-compile --cross-prefix=arm-ostl-linux-gnueabi- --arch=armv7a --sysroot=$SYSROOT --cpu=cortex-a7 --enable-thumb --target-os=linux --extra-cflags="-mfpu=neon-vfpv4 -mfloat-abi=hard" --prefix=$SYSROOT/opt/ffmpeg --enable-shared --disable-static
     ```
     * `--enable-cross-compile`: 启用交叉编译
     * `--cross-prefix=arm-ostl-linux-gnueabi-`：编译器的前缀
@@ -78,6 +78,7 @@
     * `--target-os=linux`：target 的操作系统
     * `--extra-cflags="-mfpu=neon-vfpv4 -mfloat-abi=hard"`：其他的 C 编译选项，抄下来
     * `--prefix=$SYSROOT/opt/ffmpeg`: 安装目标位置（但这么写会出问题，因为可用存储太小了会出问题，可以改成 `/mnt/usb/ffmpeg` 之类的）
+    * `--enable-shared --disable-static`：启用动态库，缩小规模
 
     * 注：理论上这里应该 disable 一些无用的属性来减少产生的库文件的大小，否则放入嵌入式系统内可能相当困难，最终的库文件大概有一百到二百兆。具体可以观察 `./configure --help` 打印出的说明。（但事实上，加钱插个 U 盘就行）
     * 注：报错的话，可以在 `ffbuild/config.log` 的**最后**找到报错的原因。

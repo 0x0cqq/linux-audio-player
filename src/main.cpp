@@ -36,6 +36,28 @@ int main(int argc, char *argv[]) {
 
     decoder.play();
 
+//     decoder.play();
+
+//     sleep(15);
+
+//     auto time = decoder.getTime();
+
+//     std::cout << "Time: " << time << std::endl;
+
+//     decoder.jump(time - 5);
+
+//     sleep(2);
+
+//     auto time2 = decoder.getTime();
+
+//     std::cout << "Time: " << time2 << std::endl;
+
+//     sleep(5);
+
+//     auto time3 = decoder.getTime();
+
+//     std::cout << "Time: " << time3 << std::endl;
+
     t1.join();
 
     return 0;

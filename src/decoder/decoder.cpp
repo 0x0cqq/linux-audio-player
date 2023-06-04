@@ -166,13 +166,18 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             std::lock_guard<std::mutex> lock(jumpMutex);
             if(haveJumpSignal) {
                 // 跳转到目标时间戳
-                ret = av_seek_frame(format_ctx, stream_index, int64_t(jumpTarget * AV_TIME_BASE), AVSEEK_FLAG_BACKWARD);
+                // std::cout << "Jump Target: " << jumpTarget << std::endl; 
+                AVStream * stream = format_ctx->streams[packet->stream_index];
+                int64_t target = jumpTarget / av_q2d(stream->time_base);
+                ret = av_seek_frame(format_ctx, packet->stream_index, target, AVSEEK_FLAG_ANY);
                 if (ret < 0) {
                     av_strerror(ret, errors, ERROR_STR_SIZE);
                     av_log(NULL, AV_LOG_ERROR, "Failed to av_seek_frame, %d(%s)\n", ret, errors);
                     throw std::runtime_error("Failed to av_seek_framem, " + std::string(errors));
                 }
                 haveJumpSignal = false;
+                
+                avcodec_flush_buffers( codec_ctx );
             }
         }
         // 读取一帧数据的数据包
@@ -194,6 +199,12 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             }
 
             while (!avcodec_receive_frame(codec_ctx, frame)) {
+                {
+                    // 获取锁
+                    std::lock_guard<std::mutex> lock(currentPosMutex);
+                    AVStream * stream = format_ctx->streams[packet->stream_index];
+                    currentPos = frame->pts * av_q2d(stream->time_base);
+                }
                 // fprintf(stderr, "frame->nb_samples: %d\n", frame->nb_samples);
                 // 获取每个采样点的字节大小
                 numBytes = av_get_bytes_per_sample(outFormat);
@@ -265,6 +276,12 @@ bool Decoder::jump(double jumpTarget) {
     haveJumpSignal = true;
     return true;
 }
+
+double Decoder::getTime() {
+    std::lock_guard<std::mutex> lock(currentPosMutex);
+    return currentPos;
+}
+
 
 bool Decoder::finished() const {
     return isFinished;
