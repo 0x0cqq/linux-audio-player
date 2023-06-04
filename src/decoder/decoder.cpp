@@ -146,10 +146,12 @@ void Decoder::openFile(char const file_path[]) {
     fprintf(stderr, "解码器名称: %s\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
         codec->name, codec_ctx->channels, av_get_default_channel_layout(codec_ctx->channels), codec_ctx->sample_rate, 
         av_get_sample_fmt_name(codec_ctx->sample_fmt));
+    fflush(stderr);
 
     fprintf(stderr, "to\n通道数: %d\n通道布局: %ld \n采样率: %d \n采样格式: %s\n", 
         outChannel, av_get_default_channel_layout(outChannel), 
         outSampleRate, av_get_sample_fmt_name(outFormat));
+    fflush(stderr);
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,
@@ -166,9 +168,14 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to swr_init(pSwrContext)"));
     }
 
+    std::cerr << "swr_init success" << std::endl << std::flush;
+
     if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(currentTempo).c_str()) != 0) {
         throw(std::runtime_error("Codec not init audio filter!"));
     }
+
+    fprintf(stderr, "init filter success...\n");
+    fflush(stderr);
 
     isFileOpened = true;
 }
