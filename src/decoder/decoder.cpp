@@ -95,15 +95,18 @@ void Decoder::decode(char const outputFile[], std::function<void(void *, size_t)
             std::lock_guard<std::mutex> lock(jumpMutex);
             if(haveJumpSignal) {
                 // 跳转到目标时间戳
-                std::cout << "Jump Target: " << jumpTarget << std::endl; 
+                // std::cout << "Jump Target: " << jumpTarget << std::endl; 
                 AVStream * stream = format_ctx->streams[packet->stream_index];
-                ret = av_seek_frame(format_ctx, packet->stream_index, int64_t(jumpTarget * av_q2d(stream->time_base)), AVSEEK_FLAG_ANY);
+                int64_t target = jumpTarget / av_q2d(stream->time_base);
+                ret = av_seek_frame(format_ctx, packet->stream_index, target, AVSEEK_FLAG_ANY);
                 if (ret < 0) {
                     av_strerror(ret, errors, ERROR_STR_SIZE);
                     av_log(NULL, AV_LOG_ERROR, "Failed to av_seek_frame, %d(%s)\n", ret, errors);
                     throw std::runtime_error("Failed to av_seek_framem, " + std::string(errors));
                 }
                 haveJumpSignal = false;
+                
+                avcodec_flush_buffers( codec_ctx );
             }
         }
         // 读取一帧数据的数据包
