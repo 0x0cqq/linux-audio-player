@@ -26,6 +26,7 @@ void Controller::change_song(int index) {
         return;
     }
     current_select_index = index;
+    decoder->pause();
     decoder->openFile(song_list[index].c_str());
     decoder->play();
 }

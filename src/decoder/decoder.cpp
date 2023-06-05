@@ -1,5 +1,7 @@
 #include "decoder/decoder.h"
 
+#include <thread>
+
 Decoder::Decoder() {
     packet = av_packet_alloc();
     frame = av_frame_alloc();
@@ -183,8 +185,11 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
             continue;
         }
         if (!isPlaying) {
+            // avcodec_flush_buffers( codec_ctx );
             // 进入等待状态，直到 isPlaying 为 true
-            // 是否可以用 condition_variable?
+            while(!isPlaying) {
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+            }
             continue;
         }
         {
@@ -192,6 +197,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
             if (isTempoChanged) {
                 avfilter_graph_free(&filter_graph);
                 if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(targetTempo).c_str()) != 0) {
+                    av_log(NULL, AV_LOG_ERROR, "Codec not init audio filter!");
                     throw(std::runtime_error("Codec not init audio filter!"));
                 }
                 isTempoChanged = false;
@@ -234,41 +240,59 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
             // 将封装包发往解码器
             if (packet->stream_index == stream_index) {
                 ret = avcodec_send_packet(codec_ctx, packet);
-                if (ret) {
+                if (ret < 0) {
                     av_strerror(ret, errors, ERROR_STR_SIZE);
                     av_log(NULL, AV_LOG_ERROR, "Failed to avcodec_send_packet, %d(%s)\n", ret, errors);
-                    break;
+                    throw std::runtime_error("Failed to avcodec_send_packet, " + std::string(errors));
                 }
 
-                while (!avcodec_receive_frame(codec_ctx, frame)) {
+                while (true) {
+                    ret = avcodec_receive_frame(codec_ctx, frame);
+                    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+                        break;
+                    } else if (ret < 0) {
+                        av_log(NULL, AV_LOG_ERROR, "Failed to avcodec_receive_frame, ret %d\n", ret);
+                        throw std::runtime_error("Failed to avcodec_receive_frame");
+                    }
                     {
                         // 获取锁
                         std::lock_guard<std::mutex> lock(currentPosMutex);
                         AVStream * stream = format_ctx->streams[packet->stream_index];
                         currentPos = frame->pts * av_q2d(stream->time_base);
                     }
-                    // 获取每个采样点的字节大小
-                    numBytes = av_get_bytes_per_sample(outFormat);
+
                     // 修改采样率参数后，需要重新获取采样点的样本个数
-                    outNbSamples = av_rescale_rnd(frame->nb_samples, outSampleRate, codec_ctx->sample_rate, AV_ROUND_ZERO);
                     uint8_t *buffer[outChannel];
 
-                    av_samples_alloc(buffer, NULL, outChannel, outNbSamples, outFormat, 0);
 
                     // filter
                     if (av_buffersrc_add_frame(in_ctx, frame) < 0) {
-                        std::cerr << "Failed to allocate filtered frame" << std::endl << std::flush;
+                        av_log(NULL, AV_LOG_ERROR, "Failed to allocate filtered frame\n");
                         break;
                     }
 
-                    while (av_buffersink_get_frame(out_ctx, frame) >= 0) {
+                    while (true) {
+                        ret = av_buffersink_get_frame(out_ctx, frame);
+                        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+                            break;
+                        } else if (ret < 0) {
+                            av_log(NULL, AV_LOG_ERROR, "Failed to av_buffersink_get_frame, ret %d\n", ret);
+                            throw std::runtime_error("Failed to av_buffersink_get_frame, ret " + std::to_string(ret));
+                        }
+                        
+                        // 获取每个采样点的字节大小
+                        numBytes = av_get_bytes_per_sample(outFormat);
+                        outNbSamples = av_rescale_rnd(frame->nb_samples, outSampleRate, codec_ctx->sample_rate, AV_ROUND_ZERO);
+                        av_samples_alloc(buffer, NULL, outChannel, outNbSamples, outFormat, 0);
+
+
                         // 重采样
                         int realOutNbSamples = swr_convert(swr_ctx, buffer, outNbSamples, (const uint8_t **)frame->data, frame->nb_samples);
 
                         // 第一次显示
                         static int show = 1;
                         if (show == 1) {
-                            std::cerr << "numBytes: " << numBytes << " nb_samples: " << frame->nb_samples << " to outNbSamples: " << outNbSamples << std::endl << std::flush;
+                            av_log(NULL, AV_LOG_INFO, "numBytes: %d nb_samples: %d to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
                             show = 0;
                         }
 
@@ -287,10 +311,10 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         callback(output_buffer, realOutNbSamples);
 
                         av_frame_unref(frame);
-                        break;
+
+                        av_freep(&buffer[0]);
                     }
 
-                    av_freep(&buffer[0]);
                     av_packet_unref(packet);
                 }
             }
