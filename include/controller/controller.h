@@ -60,6 +60,10 @@ public:
 
     bool play();
 
+    double get_tempo() {
+        return decoder->getTempo();
+    }
+
     bool set_tempo(double tempo);
 
     bool jump(double jumpTarget);

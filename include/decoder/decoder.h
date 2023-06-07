@@ -190,4 +190,13 @@ public:
      * @return false 修改失败
      */
     bool changeTempo(double tempo);
+
+    /**
+     * @brief 获取当前的播放速度
+     * 
+     * @return double 播放速度
+     */
+    double getTempo() {
+        return currentTempo;
+    }
 };

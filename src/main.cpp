@@ -10,6 +10,7 @@
 #include "controller/controller.h"
 
 extern "C" {
+    #include <termios.h>
     #include <alsa/asoundlib.h>
     #include <libavformat/avformat.h>
     #include <libswresample/swresample.h>
@@ -34,19 +35,111 @@ void print_help() {
     std::cout << "  [h]elp: reprint help" << std::endl;
 }
 
+bool isEnded = false;
+
+std::mutex mtx;
+
+const int INFO_MAX_WIDTH = 50;
+int now_info_start_pos = 0;
+
+void print_command_line (Controller &controller, std::string & current_catched_char) {
+    while(!isEnded) {
+        // get the lock 
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            // if some song is selected, print current time
+            // format to 2 decimal places after the decimal point
+            std::cout << std::fixed;
+            std::cout.precision(2);
+            std::string info;
+            if(controller.get_current_select_index() != -1) {
+                double current_time, total_time;
+                controller.get_time(current_time, total_time);
+                info += "Name: " + controller.get_current_select_song_name() + " ";
+                info += "Time: " + std::to_string(current_time) + "s/" + std::to_string(total_time) + "s ";
+                info += "Tempo: " + std::to_string(controller.get_tempo()) + "x";
+            } else {
+                info += "No song selected";
+            }
+            info += "     ";
+            // rolling print the info
+            if(info.length() > INFO_MAX_WIDTH) {
+                if(now_info_start_pos + INFO_MAX_WIDTH > info.length()) {
+                    std::cout << info.substr(now_info_start_pos, info.length() - now_info_start_pos) + info.substr(0, INFO_MAX_WIDTH - (info.length() - now_info_start_pos));
+                } else {
+                    std::cout << info.substr(now_info_start_pos, INFO_MAX_WIDTH);
+                }
+                now_info_start_pos = (now_info_start_pos + 1) % (info.length());
+            } else {
+                std::cout << info + std::string(INFO_MAX_WIDTH - info.length(), ' ');
+            }
+            // print a bash-like prompt
+            std::cout << " > ";
+            std::cout << current_catched_char;
+            // pop all space in the end
+            while(current_catched_char.length() > 0 && current_catched_char[current_catched_char.length() - 1] == '\t') {
+                current_catched_char.pop_back();
+            }
+            // move the cursor to the end of the line
+            std::cout << "\r";
+            std::cout << std::flush;
+            // release the lock
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
 
 
 int main(int argc, char *argv[]) {    
     freopen("logerr.txt", "w", stderr);
-    Controller controller;
 
     print_help();
 
+    Controller controller;
 
+    std::string current_catched_char = "";
+
+
+    // set terminal to non-canonical mode, close echo, disable backspace, hide cursor
+    system("stty -echo; stty -icanon; stty erase ^-; setterm -cursor off");
+
+    // start a thread to print the command line
+    std::thread print_command_line_thread(print_command_line, std::ref(controller), std::ref(current_catched_char));
+    std::string command_line;
+
+    // main loop
     while(true) {
-        std::string command_line;
-        std::cout << "> ";
-        getline(std::cin, command_line);
+        // put the info before the command line 
+        // catch the input and manually put it to the end of the line
+
+        // catch a char
+        char c = 0;
+        c = getchar();
+        // if it is a backspace, delete the last char
+        if(c == 127 || c == 8 || c == 27) {
+            if(current_catched_char.size() > 0) {
+                std::lock_guard<std::mutex> lock(mtx);
+                current_catched_char[current_catched_char.length() - 1] = '\t';
+            }
+            continue;
+        } 
+        // if it is a enter, execute the command
+        else if(c == 10) {
+            std::cout << std::endl;
+            // execute the command
+            command_line = current_catched_char;
+            std::cout << std::endl;
+            current_catched_char = "";
+        } else if(c == ' ') {
+            c = ' ';
+        }
+
+        if(c != 10) {
+            current_catched_char += c;
+            continue;
+        } 
+        
+    
         // split to two parts by space
         std::stringstream ss(command_line);
         std::string command;
@@ -192,6 +285,7 @@ int main(int argc, char *argv[]) {
                 if(command == "quit") {
                     controller.quit();
                     std::cout << "Success: quit program" << std::endl;
+                    isEnded = true;
                     goto end;
                 } else {
                     std::cout << "Error: unknown command" << std::endl;
@@ -233,6 +327,14 @@ int main(int argc, char *argv[]) {
 
 end:
 
+    // reopen the terminal, open icanon and echo, use backspace
+    system("stty echo; stty icanon; stty erase ^H");
+    // show the cursor
+    system("setterm -cursor on");
+    // wait for the thread to end
+    if (print_command_line_thread.joinable()) {
+        print_command_line_thread.join();
+    }
 
     return 0;
 }
