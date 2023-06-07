@@ -21,9 +21,11 @@ if(cross)
     include_directories("${CMAKE_SYSROOT}${ffmpeg_root}include")
     link_directories("${CMAKE_SYSROOT}${ffmpeg_root}lib")
 endif()
-
+    
 add_subdirectory(src)
 
+target_include_directories(${PROJECT_NAME} PUBLIC include)
+    
 message("CMAKE_CXX_COMPILER = " ${CMAKE_CXX_COMPILER})
 message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS})
 MESSAGE("CMAKE_CXX_FLAGS_RELEASE = " ${CMAKE_CXX_FLAGS_RELEASE})
