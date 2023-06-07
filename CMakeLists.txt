@@ -24,7 +24,7 @@ endif()
     
 add_subdirectory(src)
 
-target_include_directories(${PROJECT_NAME} PUBLIC include)
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/include)
     
 message("CMAKE_CXX_COMPILER = " ${CMAKE_CXX_COMPILER})
 message("CMAKE_CXX_FLAGS = " ${CMAKE_CXX_FLAGS})
