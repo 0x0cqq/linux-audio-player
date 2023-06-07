@@ -41,6 +41,7 @@ std::mutex mtx;
 
 const int INFO_MAX_WIDTH = 50;
 int now_info_start_pos = 0;
+int now_backspace_count = 0;
 
 void print_command_line (Controller &controller, std::string & current_catched_char) {
     while(!isEnded) {
@@ -49,19 +50,29 @@ void print_command_line (Controller &controller, std::string & current_catched_c
             std::lock_guard<std::mutex> lock(mtx);
             // if some song is selected, print current time
             // format to 2 decimal places after the decimal point
-            std::cout << std::fixed;
-            std::cout.precision(2);
-            std::string info;
+            std::stringstream ss;
+            ss << std::fixed;
+            ss.precision(2);
             if(controller.get_current_select_index() != -1) {
                 double current_time, total_time;
                 controller.get_time(current_time, total_time);
-                info += "Name: " + controller.get_current_select_song_name() + " ";
-                info += "Time: " + std::to_string(current_time) + "s/" + std::to_string(total_time) + "s ";
-                info += "Tempo: " + std::to_string(controller.get_tempo()) + "x";
+                ss << "Name: " << controller.get_current_select_song_name() << " ";
+                ss << "Time: " << current_time << "s/" << total_time << "s ";
+                ss << "Tempo: " << controller.get_tempo() << "x";
             } else {
-                info += "No song selected";
+                ss << "No song selected";
             }
-            info += "     ";
+            // if(controller.get_current_select_index() != -1) {
+            //     double current_time, total_time;
+            //     controller.get_time(current_time, total_time);
+            //     info += "Name: " + controller.get_current_select_song_name() + " ";
+            //     info += "Time: " + std::to_string(current_time) + "s/" + std::to_string(total_time) + "s ";
+            //     info += "Tempo: " + std::to_string(controller.get_tempo()) + "x";
+            // } else {
+            //     info += "No song selected";
+            // }
+            ss << "     ";
+            std::string info = ss.str();
             // rolling print the info
             if(info.length() > INFO_MAX_WIDTH) {
                 if(now_info_start_pos + INFO_MAX_WIDTH > info.length()) {
@@ -76,10 +87,8 @@ void print_command_line (Controller &controller, std::string & current_catched_c
             // print a bash-like prompt
             std::cout << " > ";
             std::cout << current_catched_char;
-            // pop all space in the end
-            while(current_catched_char.length() > 0 && current_catched_char[current_catched_char.length() - 1] == '\t') {
-                current_catched_char.pop_back();
-            }
+            std::cout << std::string(now_backspace_count, ' ');
+            now_backspace_count = 0;
             // move the cursor to the end of the line
             std::cout << "\r";
             std::cout << std::flush;
@@ -111,7 +120,6 @@ int main(int argc, char *argv[]) {
     while(true) {
         // put the info before the command line 
         // catch the input and manually put it to the end of the line
-
         // catch a char
         char c = 0;
         c = getchar();
@@ -119,7 +127,8 @@ int main(int argc, char *argv[]) {
         if(c == 127 || c == 8 || c == 27) {
             if(current_catched_char.size() > 0) {
                 std::lock_guard<std::mutex> lock(mtx);
-                current_catched_char[current_catched_char.length() - 1] = '\t';
+                current_catched_char.pop_back();
+                now_backspace_count++;
             }
             continue;
         } 
@@ -128,7 +137,6 @@ int main(int argc, char *argv[]) {
             std::cout << std::endl;
             // execute the command
             command_line = current_catched_char;
-            std::cout << std::endl;
             current_catched_char = "";
         } else if(c == ' ') {
             c = ' ';
@@ -149,8 +157,12 @@ int main(int argc, char *argv[]) {
                 if(command == "add") {
                     std::string filename;
                     ss >> filename;
-                    controller.add_song(filename);
-                    std::cout << "Success: song added, " << filename << std::endl;
+                    bool res = controller.add_song(filename);
+                    if(res) {
+                        std::cout << "Success: song added, " << filename << std::endl;
+                    } else {
+                        std::cout << "Error: song not found, " << filename << std::endl;
+                    }
                 } else {
                     std::cout << "Error: unknown command" << std::endl;
                 }

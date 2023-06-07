@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <filesystem>
 
 #include "decoder/decoder.h"
 #include "player/player.h"
@@ -48,8 +49,19 @@ public:
         song_list.erase(song_list.begin() + index);
     }
 
-    inline void add_song(std::string song_name) {
-        song_list.push_back(song_name);
+    inline bool add_song(std::string song_name) {
+        // check if song_name is not exist in the file system
+        for(auto &song : song_list) {
+            if(song == song_name) {
+                return false;
+            }
+        }
+        if(std::filesystem::exists(song_name)) {
+            song_list.push_back(song_name);
+            return true;
+        } else {
+            return false;
+        }
     }
     
     std::vector<std::string> get_song_list() {

@@ -344,6 +344,7 @@ bool Decoder::changeTempo(double tempo) {
         return false;
     }
     this->targetTempo = tempo;
+    this->currentTempo = tempo;
     isTempoChanged = true;
     return true;
 }
