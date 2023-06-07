@@ -47,6 +47,11 @@ private:
     // 是否已经打开文件
     volatile bool isFileOpened = false;
 
+    /**
+     * @brief 是否退出
+    */
+    volatile bool isQuitSent = false;
+
     // 播放状态 Part
     /**
      * @brief 是否正在播放
@@ -60,7 +65,7 @@ private:
      * @brief 是否有跳转信号，需要跳转到某个时间戳
      * 
      */
-    bool haveJumpSignal = false;
+    volatile bool haveJumpSignal = false;
 
     /**
      * @brief 跳转的目标时间戳，单位为秒
@@ -103,7 +108,7 @@ private:
      * @brief 是否有改变播放速度的信号
      * 
      */
-    bool isTempoChanged = false;
+    volatile bool isTempoChanged = false;
 
     /**
      * @brief 用来控制改变播放速度的互斥锁
@@ -140,6 +145,8 @@ public:
     void openFile(char const file_path[]);
     void release();
     void decode(std::function<void(void *, size_t)> callback);
+
+    void quit();
 
     /**
      * @brief 跳转播放

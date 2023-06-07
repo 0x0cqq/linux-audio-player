@@ -15,45 +15,57 @@ void Controller::play_worker() {
 }
 
 
-void Controller::change_song(int index) {
+bool Controller::change_song(int index) {
     if(index == -1) {
         current_select_index = -1;
-        return;
+        return true;
     }
     // Index out of range
     if(index < 0 || index >= song_list.size()) {
         std::cerr << "index out of range" << std::endl;
-        return;
+        return false;
     }
     current_select_index = index;
     decoder->pause();
     decoder->openFile(song_list[index].c_str());
     decoder->play();
+    return true;
 }
 
-void Controller::pause() {
-    decoder->pause();
-}
-
-void Controller::set_tempo(double tempo) {
-    decoder->changeTempo(tempo);
-}
-
-void Controller::jump(double jumpTarget) {
-    decoder->jump(jumpTarget);
-}
-
-void Controller::play() {
+bool Controller::pause() {
     if(current_select_index == -1) {
         std::cerr << "No song selected" << std::endl;
-        return;
+        return false;
+    }
+    decoder->pause();
+    return true;
+}
+
+bool Controller::set_tempo(double tempo) {
+    return decoder->changeTempo(tempo);
+}
+
+bool Controller::jump(double jumpTarget) {
+    return decoder->jump(jumpTarget);
+}
+
+bool Controller::play() {
+    if(current_select_index == -1) {
+        std::cerr << "No song selected" << std::endl;
+        return false;
     }
     decoder->play();
+    return true;
 }
 
 void Controller::get_time(double &current_time, double &total_time) {
     current_time = decoder->getTime();
     total_time = decoder->getTotalTime();
+}
+
+
+void Controller::quit() {
+    decoder->quit();
 }
 
 Controller::~Controller() {

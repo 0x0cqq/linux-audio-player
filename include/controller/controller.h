@@ -51,19 +51,67 @@ public:
     inline void add_song(std::string song_name) {
         song_list.push_back(song_name);
     }
+    
+    std::vector<std::string> get_song_list() {
+        return song_list;
+    }
 
-    void pause();
+    bool pause();
 
-    void play();
+    bool play();
 
-    void set_tempo(double tempo);
+    bool set_tempo(double tempo);
 
-    void jump(double jumpTarget);
+    bool jump(double jumpTarget);
 
     void get_time(double &current_time, double &total_time);
 
-    void change_song(int index);
+    bool change_song(int index);
+
+    bool next_song() {
+        if(current_select_index == -1) {
+            return false;
+        }
+        return change_song((current_select_index + 1) % song_list.size());
+    }
+    
+    bool last_song() {
+        if(current_select_index == -1) {
+            return false;
+        }
+        return change_song((current_select_index - 1 + song_list.size()) % song_list.size());
+    }
 
     void play_worker();
+
+    void quit();
+
+    bool forward(double time) {
+        if(current_select_index == -1) {
+            return false;
+        }
+        double current_time, total_time;
+        get_time(current_time, total_time);
+        double target_time = current_time + time;
+        if(target_time > total_time) {
+            target_time = total_time;
+        }
+        jump(target_time);
+        return true;
+    } 
+
+    bool backward(double time) {
+        if(current_select_index == -1) {
+            return false;
+        }
+        double current_time, total_time;
+        get_time(current_time, total_time);
+        double target_time = current_time - time;
+        if(target_time < 0) {
+            target_time = 0;
+        }
+        jump(target_time);
+        return true;
+    }
 
 };

@@ -180,6 +180,9 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
     int ret = 0;
     
     while (true) {
+        if (!isQuitSent) {
+            break;
+        }
         if (!isFileOpened) {
             // 进入等待状态，直到 isFileOpened 为 true，没开文件播放个锤子
             continue;
@@ -362,6 +365,10 @@ void Decoder::play()
 
 void Decoder::pause() {
     isPlaying = false;
+}
+
+void Decoder::quit() {
+    isQuitSent = true;
 }
 
 void Decoder::release() {
