@@ -1,6 +1,7 @@
 #include "controller/controller.h"
 
 Controller::Controller() {
+    av_log_set_level(AV_LOG_ERROR);
     current_select_index = -1;
     decoder = new Decoder();
     player = new Player(2, 44100, SND_PCM_FORMAT_S16_LE);
@@ -8,7 +9,7 @@ Controller::Controller() {
 }
 
 void Controller::play_worker() {
-    std::cout << "play_worker: started" << std::endl;
+    // std::cout << "play_worker: started" << std::endl;
     decoder->decode([&](void *buffer, int outSamplesize) {
         player->play_to_pcm(buffer, outSamplesize);
     });

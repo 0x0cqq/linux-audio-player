@@ -29,7 +29,6 @@ private:
     AVPacket *packet = nullptr;
     AVFrame *frame = nullptr;
     SwrContext *swr_ctx = nullptr;
-    FILE *outfile = nullptr;
 
     // atempo filter
     AVFilterContext* in_ctx = nullptr;

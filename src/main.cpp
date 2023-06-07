@@ -19,6 +19,7 @@ extern "C" {
 void print_help() {
     std::cout << "Command list:" << std::endl;
     std::cout << "  [a]dd <filename>: add a song" << std::endl;
+    std::cout << "  [i]nfo <filename>: show song info" << std::endl;
     std::cout << "  [s]how: show music list" << std::endl;
     std::cout << "  [c]hoose: choose a song music index" << std::endl;
     std::cout << "  [t]empo <tempo_count>: set tempo to a number in [0.5, 2]" << std::endl;
@@ -36,6 +37,7 @@ void print_help() {
 
 
 int main(int argc, char *argv[]) {    
+    freopen("logerr.txt", "w", stderr);
     Controller controller;
 
     print_help();
@@ -43,6 +45,7 @@ int main(int argc, char *argv[]) {
 
     while(true) {
         std::string command_line;
+        std::cout << "> ";
         getline(std::cin, command_line);
         // split to two parts by space
         std::stringstream ss(command_line);
@@ -59,12 +62,33 @@ int main(int argc, char *argv[]) {
                     std::cout << "Error: unknown command" << std::endl;
                 }
                 break;
+            case 'i':
+                if(command == "info") {
+                    std::string song_name;
+                    double current_time, total_time;
+                    song_name = controller.get_current_select_song_name();
+                    if(controller.get_current_select_index() == -1) {
+                        std::cout << "Error: no song selected" << std::endl;
+                        break;
+                    } else {
+                        controller.get_time(current_time, total_time);
+                        std::cout << "Song name: " << song_name
+                            << "Time: " << current_time << "s/" << total_time << "s" << std::endl;
+                    }
+                } else {
+                    std::cout << "Error: unknown command" << std::endl;
+                }
+                break;
             case 's':
                 if(command == "show") {
                     auto song_list = controller.get_song_list();
-                    std::cout << "Total " << song_list.size() << " Song list:" << std::endl;
+                    std::cout << "Total " << song_list.size() << ", current: " << controller.get_current_select_index() << std::endl;
+                    std::cout << "Song list:" << std::endl;
                     for(int i = 0; i < song_list.size(); i++) {
-                        std::cout << "  [" << i << "]: " << song_list[i] << std::endl;
+                        if(i == controller.get_current_select_index())
+                            std::cout << "  [" << i << "]: " << song_list[i] << " (current)" << std::endl;
+                        else
+                            std::cout << "  [" << i << "]: " << song_list[i] << std::endl;
                     }
                 } else {
                     std::cout << "Error: unknown command" << std::endl;

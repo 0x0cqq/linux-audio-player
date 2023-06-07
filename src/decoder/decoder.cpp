@@ -85,12 +85,13 @@ int Decoder::init_atempo_filter(AVFilterGraph **pGraph, AVFilterContext **src, A
 }
 
 void Decoder::openFile(char const file_path[]) {
+    
     // 获取打开文件的锁
     std::lock_guard<std::mutex> lock(openFileMutex);
 
     isFileOpened = false;
 
-    std::cerr << "Open file name: " << file_path << std::endl;
+    // std::cerr << "Open file name: " << file_path << std::endl;
 
     // 假如重新打开的话需要 release， release 一个空指针不会出错
     release();
@@ -135,18 +136,18 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to open codec"));
     }
 
-    std::cerr 
-            << "输入音乐, 解码器名称: " << codec->name 
-            << " 通道数: " << codec_ctx->channels
-            << " 采样率: " << codec_ctx->sample_rate 
-            << " 通道布局: " << av_get_default_channel_layout(codec_ctx->channels)
-            << " 采样格式: " << av_get_sample_fmt_name(codec_ctx->sample_fmt) << std::endl << std::flush;
+    // std::cerr 
+    //         << "输入音乐, 解码器名称: " << codec->name 
+    //         << " 通道数: " << codec_ctx->channels
+    //         << " 采样率: " << codec_ctx->sample_rate 
+    //         << " 通道布局: " << av_get_default_channel_layout(codec_ctx->channels)
+    //         << " 采样格式: " << av_get_sample_fmt_name(codec_ctx->sample_fmt) << std::endl << std::flush;
 
-    std::cerr 
-        << "Decoder 输出格式, 通道数: " << outChannel
-        << " 采样率: " << outSampleRate
-        << " 通道布局: " << av_get_default_channel_layout(outChannel)
-        << " 采样格式: " << av_get_sample_fmt_name(outFormat) << std::endl << std::flush;
+    // std::cerr 
+    //     << "Decoder 输出格式, 通道数: " << outChannel
+    //     << " 采样率: " << outSampleRate
+    //     << " 通道布局: " << av_get_default_channel_layout(outChannel)
+    //     << " 采样格式: " << av_get_sample_fmt_name(outFormat) << std::endl << std::flush;
 
     // 获取音频转码器并设置采样参数初始化
     swr_ctx = swr_alloc_set_opts(0,
@@ -163,13 +164,13 @@ void Decoder::openFile(char const file_path[]) {
         throw(std::runtime_error("Failed to swr_init(pSwrContext)"));
     }
 
-    std::cerr << "swr_init success" << std::endl << std::flush;
+    // std::cerr << "swr_init success" << std::endl << std::flush;
 
     if (init_atempo_filter(&filter_graph, &in_ctx, &out_ctx, std::to_string(currentTempo).c_str()) != 0) {
         throw(std::runtime_error("Codec not init audio filter!"));
     }
 
-    std::cerr << "avfilter_init success..." << std::endl << std::flush;
+    // std::cerr << "avfilter_init success..." << std::endl << std::flush;
 
     isFileOpened = true;
 }
@@ -180,7 +181,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
     int ret = 0;
     
     while (true) {
-        if (!isQuitSent) {
+        if (isQuitSent) {
             break;
         }
         if (!isFileOpened) {
@@ -295,7 +296,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         // 第一次显示
                         static int show = 1;
                         if (show == 1) {
-                            av_log(NULL, AV_LOG_INFO, "numBytes: %d nb_samples: %d to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
+                            av_log(NULL, AV_LOG_VERBOSE, "numBytes: %d nb_samples: %d to outNbSamples: %d\n", numBytes, frame->nb_samples, outNbSamples);
                             show = 0;
                         }
 
@@ -323,8 +324,6 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
             }
         }
     }
-
-    fclose(outfile);
 }
 
 
