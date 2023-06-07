@@ -260,8 +260,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         AVStream * stream = format_ctx->streams[packet->stream_index];
                         currentPos = frame->pts * av_q2d(stream->time_base);
                     }
-
-                    // 修改采样率参数后，需要重新获取采样点的样本个数
+                
                     uint8_t *buffer[outChannel];
 
 
@@ -282,6 +281,7 @@ void Decoder::decode(std::function<void(void *, size_t)> callback) {
                         
                         // 获取每个采样点的字节大小
                         numBytes = av_get_bytes_per_sample(outFormat);
+                        // 修改采样率参数后，需要重新获取采样点的样本个数
                         outNbSamples = av_rescale_rnd(frame->nb_samples, outSampleRate, codec_ctx->sample_rate, AV_ROUND_ZERO);
                         av_samples_alloc(buffer, NULL, outChannel, outNbSamples, outFormat, 0);
 
