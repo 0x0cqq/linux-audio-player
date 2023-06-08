@@ -1,4 +1,4 @@
-# 基于 Linux ALSA 和 FFmpeg 的音乐解码播放器
+# 基于 Linux ALSA 和 FFmpeg 的音乐解码播放器 —— 嵌入式系统实现
 
 ## 组员
 
@@ -208,8 +208,7 @@ Player 类调用 ALSA 的接口，将 Decoder 解码得到的 pcm 数据播放�
 
 1. 初始化，调用一系列 `snd_` 函数：分配 hw_params 空间（`snd_pcm_hw_params_malloc`），打开 pcm 设备（`snd_pcm_open`），初始化 pcm 配置（`snd_pcm_hw_params_any`），设置 pcm 参数(`snd_pcm_set_params`)
 
-
-2. 实现了上面提到的回调函数：调用 `snd_pcm_writei` 将解码得到的 pcm 数据输出到声音设备
+2. 实现了上面提到的回调函数：调用 `snd_pcm_writei` 将解码得到的 pcm 数据输出到声音设备。
 
 
 ## Controller 类
@@ -220,9 +219,9 @@ Player 类调用 ALSA 的接口，将 Decoder 解码得到的 pcm 数据播放�
 
 2. 维护了一个 Decoder 和 Player 类，通过回调函数连接 Decoder 的输出和 Player 的输入。
 
-3. 维护了一个工作线程，维护 Decoder 的工作进程
+3. 维护了 Decoder 的工作进程
 
-4. 维护了一系列操作的公开接口：修改歌曲列表，切换上/下一首，倍速，快进快退；通过操作 Decoder 来完成。
+4. 维护了一系列操作的公开接口：修改歌曲列表，切换上/下一首，倍速，快进快退；通过操作 Decoder 的对应接口来完成。
 
 
 ## 主文件
